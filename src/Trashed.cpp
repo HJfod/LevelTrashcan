@@ -175,6 +175,7 @@ Result<> Trashed::KABOOM() {
 }
 
 void Trashed::recover(std::filesystem::path const& dirToRecover, size_t& succeeded, size_t& failed) {
+    (void)file::createDirectoryAll(getTrashDir());
     for (auto dir : file::readDirectory(dirToRecover).unwrapOrDefault()) {
         std::error_code ec;
         if (std::filesystem::exists(dir / "level.gmd")) {
@@ -184,6 +185,7 @@ void Trashed::recover(std::filesystem::path const& dirToRecover, size_t& succeed
             }
             else {
                 failed += 1;
+                log::error("Failed to recover trashed level: {}", ec.message());
             }
         }
         else if (std::filesystem::exists(dir / "list.gmdl")) {
@@ -193,10 +195,8 @@ void Trashed::recover(std::filesystem::path const& dirToRecover, size_t& succeed
             }
             else {
                 failed += 1;
+                log::error("Failed to recover trashed list: {}", ec.message());
             }
-        }
-        else {
-            failed += 1;
         }
     }
 }
