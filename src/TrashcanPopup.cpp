@@ -1,5 +1,8 @@
 #include "TrashcanPopup.hpp"
-#include <Geode/ui/ScrollLayer.hpp>
+#include <Geode/utils/cocos.hpp>
+#include <Geode/ui/General.hpp>
+#include <Geode/binding/GJGameLevel.hpp>
+#include <Geode/binding/GJLevelList.hpp>
 #include <fmt/chrono.h>
 
 static std::string toAgoString(Trashed::TimePoint const& time) {
@@ -153,10 +156,7 @@ void TrashcanPopup::onInfo(CCObject* sender) {
     else if (auto list = obj->asList()) {
         FLAlertLayer::create(
             "List Info",
-            fmt::format(
-                "<cb>Levels</c>: {}\n",
-                list->m_levels.size()
-            ),
+            fmt::format("<cb>Levels</c>: {}\n", list->m_levels.size()),
             "OK"
         )->show();
     }

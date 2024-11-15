@@ -1,5 +1,9 @@
 #include "Trashed.hpp"
+#include <Geode/loader/Dirs.hpp>
 #include <Geode/utils/general.hpp>
+#include <Geode/utils/file.hpp>
+#include <Geode/binding/GJLevelList.hpp>
+#include <Geode/binding/LocalLevelManager.hpp>
 #include <hjfod.gmd-api/include/GMD.hpp>
 
 using namespace geode::prelude;

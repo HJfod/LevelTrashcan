@@ -3,6 +3,8 @@
 #include <string>
 #include <filesystem>
 #include <Geode/utils/cocos.hpp>
+#include <Geode/binding/GJGameLevel.hpp>
+#include <Geode/binding/GJLevelList.hpp>
 
 using namespace geode::prelude;
 

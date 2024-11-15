@@ -1,5 +1,8 @@
 #include <Geode/DefaultInclude.hpp>
 #include <Geode/binding/GJGameLevel.hpp>
+#include <Geode/binding/GJLevelList.hpp>
+#include <Geode/binding/GJSearchObject.hpp>
+#include <Geode/binding/ButtonSprite.hpp>
 #include <Geode/modify/GameLevelManager.hpp>
 #include <Geode/modify/LevelBrowserLayer.hpp>
 #include <Geode/modify/EditLevelLayer.hpp>

@@ -2,6 +2,7 @@
 
 #include "Trashed.hpp"
 #include <Geode/ui/Popup.hpp>
+#include <Geode/ui/ScrollLayer.hpp>
 
 using namespace geode::prelude;
 
