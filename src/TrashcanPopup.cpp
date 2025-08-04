@@ -13,7 +13,11 @@ static std::string toAgoString(Trashed::TimePoint const& time) {
         return fmt::format("{} {}s ago", count, unit);
     };
     auto now = Trashed::Clock::now();
-    auto len = std::chrono::duration_cast<std::chrono::minutes>(now - time).count();
+    auto len = std::chrono::duration_cast<std::chrono::seconds>(now - time).count();
+    if (len < 60) {
+        return fmtPlural(len, "second");
+    }
+    len = std::chrono::duration_cast<std::chrono::minutes>(now - time).count();
     if (len < 60) {
         return fmtPlural(len, "minute");
     }
@@ -25,9 +29,23 @@ static std::string toAgoString(Trashed::TimePoint const& time) {
     if (len < 31) {
         return fmtPlural(len, "day");
     }
-    // funny hack to convert file_clock to system_clock since clock_cast is 
-    // C++20 and not on Android
-    return fmt::format("{:%b %d %Y}", time - Trashed::Clock::now() + std::chrono::system_clock::now());
+
+    // I cant test it on Windows or Android so yeah. Feel free to do it and 
+    // delete this condition and the original return if this works fine
+    #ifdef GEODE_IS_MACOS
+        // Convert to system_clock::time_point before formatting
+        auto system_now = std::chrono::system_clock::now();
+        auto time_since_epoch = time.time_since_epoch();
+        auto system_time = std::chrono::system_clock::time_point(
+            std::chrono::duration_cast<std::chrono::system_clock::duration>(time_since_epoch)
+        );
+    
+        return fmt::format("{:%b %d %Y}", system_time);
+    #else
+        // funny hack to convert file_clock to system_clock since clock_cast is 
+        // C++20 and not on Android
+        return fmt::format("{:%b %d %Y}", time - Trashed::Clock::now() + std::chrono::system_clock::now());
+    #endif
 }
 
 bool TrashcanPopup::setup() {
@@ -89,10 +107,11 @@ void TrashcanPopup::updateList() {
         }
         node->addChildAtPosition(title, Anchor::Left, ccp(10, 8));
 
-        auto objCount = CCLabelBMFont::create(fmt::format("Trashed {}", toAgoString(gmd->getTrashTime())).c_str(), "goldFont.fnt");
-        objCount->setScale(.4f);
-        objCount->setAnchorPoint({ 0, .5f });
-        node->addChildAtPosition(objCount, Anchor::Left, ccp(10, -8));
+        // this was NOT an object counter :sob:
+        auto timeCount = CCLabelBMFont::create(fmt::format("Trashed {}", toAgoString(gmd->getTrashTime())).c_str(), "goldFont.fnt");
+        timeCount->setScale(.4f);
+        timeCount->setAnchorPoint({ 0, .5f });
+        node->addChildAtPosition(timeCount, Anchor::Left, ccp(10, -8));
 
         auto actionsMenu = CCMenu::create();
         actionsMenu->setContentWidth(m_scrollingLayer->getContentWidth() / 2);
