@@ -49,7 +49,7 @@ struct $modify(GameLevelManager) {
 
 class $modify(TrashBrowserLayer, LevelBrowserLayer) {
     struct Fields {
-        EventListener<EventFilter<UpdateTrashEvent>> listener;
+        ListenerHandle listener;
     };
 
 	$override
@@ -72,7 +72,7 @@ class $modify(TrashBrowserLayer, LevelBrowserLayer) {
                     trashSpr->setOpacity(finnsTrashed ? 255 : 205);
                     trashSpr->setColor(finnsTrashed ? ccWHITE : ccc3(90, 90, 90));
                 };
-                m_fields->listener.bind([=, this](auto*) {
+                m_fields->listener = UpdateTrashEvent().listen([=, this]() {
                     updateTrashSprite();
                     // Reload levels list
                     this->loadPage(m_searchObject);

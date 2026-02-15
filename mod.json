@@ -1,39 +1,22 @@
 {
-	"geode": "4.0.0-beta.1",
+	"geode": "5.0.0-beta.1",
 	"gd": {
-		"win": "2.2074",
-		"android": "2.2074",
-		"mac": "2.2074",
-		"ios": "2.2074"
+		"win": "2.2081",
+		"android": "2.2081",
+		"mac": "2.2081",
+		"ios": "2.2081"
 	},
 	"id": "hjfod.trashcan",
 	"name": "Trashcan",
-	"version": "1.1.0",
+	"version": "1.2.0",
 	"developer": "HJfod",
 	"description": "Deleting levels puts them in a trashcan",
-	"dependencies": [
-		{
-			"id": "geode.node-ids",
-			"version": "1.12.0",
-			"importance": "required"
-		},
-		{
-			"id": "hjfod.gmd-api",
-			"version": "1.2.1",
-			"importance": "required"
-		},
-		{
-			"id": "hjfod.gdshare",
-			"version": "1.3.0",
-			"importance": "suggested"
-		}
-	],
-	"incompatibilities": [
-		{
-			"id": "hjfod.bettersave",
-			"importance": "breaking",
-			"version": "*"
-		}
-	],
+	"dependencies": {
+		"geode.node-ids": "1.12.0",
+		"hjfod.gmd-api": "1.2.1"
+	},
+	"incompatibilities": {
+		"hjfod.bettersave": "*"
+	},
 	"tags": ["universal", "offline"]
 }

@@ -8,7 +8,7 @@
 
 using namespace geode::prelude;
 
-struct UpdateTrashEvent : public Event {};
+struct UpdateTrashEvent : public Event<UpdateTrashEvent, bool()> {};
 
 class Trashed : public CCObject {
 protected:

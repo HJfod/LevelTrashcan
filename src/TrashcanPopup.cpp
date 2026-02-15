@@ -30,7 +30,10 @@ static std::string toAgoString(Trashed::TimePoint const& time) {
     return fmt::format("{:%b %d %Y}", time - Trashed::Clock::now() + std::chrono::system_clock::now());
 }
 
-bool TrashcanPopup::setup() {
+bool TrashcanPopup::init() {
+    if (!Popup::init(350, 270))
+        return false;
+
     this->setTitle("Trashcan");
 
     auto trashcanSpr = CCSprite::createWithSpriteFrameName("edit_delBtn_001.png");
@@ -57,7 +60,7 @@ bool TrashcanPopup::setup() {
     );
     m_buttonMenu->addChildAtPosition(deleteAllBtn, Anchor::BottomLeft, ccp(20, 20));
 
-    m_listener.bind([this](auto*) {
+    m_listener = UpdateTrashEvent().listen([this]() {
         this->updateList();
         return ListenerResult::Propagate;
     });
@@ -220,7 +223,7 @@ void TrashcanPopup::onDeleteAll(CCObject*) {
 
 TrashcanPopup* TrashcanPopup::create() {
     auto ret = new TrashcanPopup();
-    if (ret && ret->initAnchored(350, 270)) {
+    if (ret && ret->init()) {
         ret->autorelease();
         return ret;
     }

@@ -139,7 +139,7 @@ Result<> Trashed::trash(GJGameLevel* level) {
         return Err(save.unwrapErr());
     }
     LocalLevelManager::get()->m_localLevels->removeObject(level);
-    UpdateTrashEvent().post();
+    UpdateTrashEvent().send();
     return Ok();
 }
 Result<> Trashed::trash(GJLevelList* list) {
@@ -150,7 +150,7 @@ Result<> Trashed::trash(GJLevelList* list) {
         return Err(save.unwrapErr());
     }
     LocalLevelManager::get()->m_localLists->removeObject(list);
-    UpdateTrashEvent().post();
+    UpdateTrashEvent().send();
     return Ok();
 }
 Result<> Trashed::untrash() {
@@ -165,7 +165,7 @@ Result<> Trashed::untrash() {
     if (ec) {
         return Err("Unable to delete trashed file: {} (code {})", ec.message(), ec.value());
     }
-    UpdateTrashEvent().post();
+    UpdateTrashEvent().send();
     return Ok();
 }
 Result<> Trashed::KABOOM() {
@@ -174,7 +174,7 @@ Result<> Trashed::KABOOM() {
     if (ec) {
         return Err("Unable to delete trashed file: {} (code {})", ec.message(), ec.value());
     }
-    UpdateTrashEvent().post();
+    UpdateTrashEvent().send();
     return Ok();
 }
 
