@@ -5,30 +5,156 @@
 #include <Geode/binding/GJLevelList.hpp>
 #include <fmt/chrono.h>
 
-static std::string toAgoString(Trashed::TimePoint const& time) {
+static std::string toAgoString(asp::SystemTime const& time) {
     auto const fmtPlural = [](auto count, auto unit) {
         if (count == 1) {
             return fmt::format("{} {} ago", count, unit);
         }
         return fmt::format("{} {}s ago", count, unit);
     };
-    auto now = Trashed::Clock::now();
-    auto len = std::chrono::duration_cast<std::chrono::minutes>(now - time).count();
-    if (len < 60) {
-        return fmtPlural(len, "minute");
+    auto dur = asp::SystemTime::now().durationSince(time);
+    if (dur) {
+        if (dur->seconds() < 60) {
+            return "Just now";
+        }
+        if (dur->minutes() < 60) {
+            return fmtPlural(dur->minutes(), "minute");
+        }
+        if (dur->hours() < 24) {
+            return fmtPlural(dur->hours(), "hour");
+        }
+        if (dur->days() < 31) {
+            return fmtPlural(dur->days(), "day");
+        }
     }
-    len = std::chrono::duration_cast<std::chrono::hours>(now - time).count();
-    if (len < 24) {
-        return fmtPlural(len, "hour");
-    }
-    len = std::chrono::duration_cast<std::chrono::days>(now - time).count();
-    if (len < 31) {
-        return fmtPlural(len, "day");
-    }
-    // funny hack to convert file_clock to system_clock since clock_cast is 
-    // C++20 and not on Android
-    return fmt::format("{:%b %d %Y}", time - Trashed::Clock::now() + std::chrono::system_clock::now());
+    return time.format("{:%b %d %Y}");
 }
+
+class TrashedItemNode : public CCNode {
+protected:
+    std::shared_ptr<TrashedItem> m_item;
+
+    bool init(std::shared_ptr<TrashedItem> item) {
+        if (!CCNode::init())
+            return false;
+        
+        constexpr float SIZE_MULTIPLIER = 1.25f;
+        
+        this->setContentSize(ccp(300, 30 * SIZE_MULTIPLIER));
+        m_item = item;
+
+        auto bg = NineSlice::create("square02b_001.png");
+        bg->setColor(ccBLACK);
+        bg->setOpacity(90);
+        bg->setScale(.5f);
+        bg->setContentSize(m_obContentSize / bg->getScale());
+        this->addChildAtPosition(bg, Anchor::Center);
+
+        auto title = CCLabelBMFont::create(item->getName().c_str(), "bigFont.fnt");
+        title->setScale(.35f * SIZE_MULTIPLIER);
+        if (item->isList()) {
+            title->setColor({ 0, 255, 0 });
+        }
+        this->addChildAtPosition(title, Anchor::Left, ccp(5, 7) * SIZE_MULTIPLIER, ccp(0, .5f));
+
+        auto timeIcon = CCSprite::createWithSpriteFrameName("GJ_timeIcon_001.png");
+        timeIcon->setScale(.45f * SIZE_MULTIPLIER);
+        this->addChildAtPosition(timeIcon, Anchor::Left, ccp(5, -7) * SIZE_MULTIPLIER, ccp(0, .5f));
+
+        auto time = CCLabelBMFont::create(
+            fmt::format("{}", toAgoString(item->getTrashTime())).c_str(),
+            "goldFont.fnt"
+        );
+        time->setScale(.35f * SIZE_MULTIPLIER);
+        this->addChildAtPosition(time, Anchor::Left, ccp(20, -7) * SIZE_MULTIPLIER, ccp(0, .5f));
+
+        auto menu = CCMenu::create();
+        menu->ignoreAnchorPointForPosition(false);
+        menu->setContentWidth(100);
+
+        auto restoreSpr = CCSprite::createWithSpriteFrameName("GJ_undoBtn_001.png");
+        restoreSpr->setScale(.5f * SIZE_MULTIPLIER);
+        auto restoreBtn = CCMenuItemSpriteExtra::create(
+            restoreSpr, this, menu_selector(TrashedItemNode::onRestore)
+        );
+        menu->addChild(restoreBtn);
+
+        auto permDelSpr = CCSprite::createWithSpriteFrameName("GJ_trashBtn_001.png");
+        permDelSpr->setScale(.4f * SIZE_MULTIPLIER);
+        auto permDelBtn = CCMenuItemSpriteExtra::create(
+            permDelSpr, this, menu_selector(TrashedItemNode::onPermaDelete)
+        );
+        menu->addChild(permDelBtn);
+
+        menu->setLayout(
+            SimpleRowLayout::create()
+                ->setMainAxisAlignment(MainAxisAlignment::End)
+                ->setGap(5)
+        );
+        this->addChildAtPosition(menu, Anchor::Right, ccp(-5, 0) * SIZE_MULTIPLIER, ccp(1, .5f));
+
+        return true;
+    }
+
+    void onRestore(CCObject*) {
+        createQuickPopup(
+            "Delete Permanently",
+            fmt::format(
+                "Do you want to <cj>restore</c> <cy>{}</c>?\n"
+                "This will return it to the top of your created levels list.",
+                m_item->getName()
+            ),
+            "Cancel", "Restore",
+            [item = m_item](auto, bool btn2) {
+                if (btn2) {
+                    auto res = Trashcan::get()->untrash(item);
+                    if (res) {
+                        Notification::create(
+                            fmt::format("Restored {}", item->getName()),
+                            NotificationIcon::Success
+                        )->show();
+                    }
+                    else {
+                        FLAlertLayer::create("Unable to Restore", res.unwrapErr(), "OK");
+                    }
+                }
+            }
+        );
+    }
+    void onPermaDelete(CCObject*) {
+        createQuickPopup(
+            "Delete Permanently",
+            fmt::format(
+                "Are you SURE you want to <cr>permanently delete</c> <cy>{}</c>?\n"
+                "<co>THIS ACTION IS IRREVERSIBLE!</c>",
+                m_item->getName()
+            ),
+            "Cancel", "Delete",
+            [item = m_item](auto, bool btn2) {
+                if (btn2) {
+                    auto res = Trashcan::get()->deletePermanently(item);
+                    if (res) {
+                        Notification::create(fmt::format("Deleted {}", item->getName()))->show();
+                    }
+                    else {
+                        FLAlertLayer::create("Unable to Delete", res.unwrapErr(), "OK");
+                    }
+                }
+            }
+        );
+    }
+
+public:
+    static TrashedItemNode* create(std::shared_ptr<TrashedItem> item) {
+        auto ret = new TrashedItemNode();
+        if (ret && ret->init(item)) {
+            ret->autorelease();
+            return ret;
+        }
+        delete ret;
+        return nullptr;
+    }
+};
 
 bool TrashcanPopup::init() {
     if (!Popup::init(350, 270))
@@ -40,18 +166,19 @@ bool TrashcanPopup::init() {
     trashcanSpr->setScale(.7f);
     m_mainLayer->addChildAtPosition(trashcanSpr, Anchor::Top, ccp(-55, -20));
 
-    m_scrollingLayer = ScrollLayer::create({ 300, 200 });
-    m_scrollingLayer->m_contentLayer->setLayout(
-        ColumnLayout::create()
-            ->setAxisReverse(true)
-            ->setAutoGrowAxis(m_scrollingLayer->getContentHeight())
-            ->setAxisAlignment(AxisAlignment::End)
-            ->setGap(0)
-    );
+    constexpr CCSize SCROLL_SIZE = ccp(300, 180);
+
+    auto scrollBG = CCLayerColor::create(ccc4(0, 0, 0, 90));
+    scrollBG->setContentSize(SCROLL_SIZE + ccp(15, 15));
+    scrollBG->ignoreAnchorPointForPosition(false);
+    m_mainLayer->addChildAtPosition(scrollBG, Anchor::Center, ccp(0, 0), ccp(.5f, .5f));
+
+    m_scrollingLayer = ScrollLayer::create(SCROLL_SIZE);
+    m_scrollingLayer->m_contentLayer->setLayout(ScrollLayer::createDefaultListLayout());
     m_mainLayer->addChildAtPosition(m_scrollingLayer, Anchor::Center, -m_scrollingLayer->getContentSize() / 2);
 
     auto border = ListBorders::create();
-    border->setContentSize(m_scrollingLayer->getContentSize());
+    border->setContentSize(m_scrollingLayer->getContentSize() + ccp(15, 15));
     m_mainLayer->addChildAtPosition(border, Anchor::Center);
 
     auto deleteAllSpr = CCSprite::createWithSpriteFrameName("GJ_resetBtn_001.png");
@@ -62,7 +189,6 @@ bool TrashcanPopup::init() {
 
     m_listener = UpdateTrashEvent().listen([this]() {
         this->updateList();
-        return ListenerResult::Propagate;
     });
     this->updateList();
     
@@ -71,151 +197,32 @@ bool TrashcanPopup::init() {
 
 void TrashcanPopup::updateList() {
     m_scrollingLayer->m_contentLayer->removeAllChildren();
-    auto items = Trashed::load();
-    if (items.empty()) {
-        return this->onClose(nullptr);
-    }
-    for (auto gmd : items) {
-        auto node = CCNode::create();
-        node->setContentSize({ m_scrollingLayer->getContentWidth(), 38 });
-
-        auto separator = CCLayerColor::create({ 0, 0, 0, 90 }, node->getContentWidth(), 1);
-        separator->ignoreAnchorPointForPosition(false);
-        separator->setOpacity(90);
-        node->addChildAtPosition(separator, Anchor::Bottom);
-
-        auto title = CCLabelBMFont::create(gmd->getName().c_str(), "bigFont.fnt");
-        title->setScale(.5f);
-        title->setAnchorPoint({ 0, .5f });
-        if (gmd->asList()) {
-            title->setColor({ 0, 255, 0 });
-        }
-        node->addChildAtPosition(title, Anchor::Left, ccp(10, 8));
-
-        auto objCount = CCLabelBMFont::create(fmt::format("Trashed {}", toAgoString(gmd->getTrashTime())).c_str(), "goldFont.fnt");
-        objCount->setScale(.4f);
-        objCount->setAnchorPoint({ 0, .5f });
-        node->addChildAtPosition(objCount, Anchor::Left, ccp(10, -8));
-
-        auto actionsMenu = CCMenu::create();
-        actionsMenu->setContentWidth(m_scrollingLayer->getContentWidth() / 2);
-
-        auto restoreSpr = CCSprite::createWithSpriteFrameName("GJ_undoBtn_001.png");
-        auto restoreBtn = CCMenuItemSpriteExtra::create(
-            restoreSpr, this, menu_selector(TrashcanPopup::onRestore)
-        );
-        restoreBtn->setUserObject(gmd);
-        actionsMenu->addChild(restoreBtn);
-
-        auto deleteSpr = CCSprite::createWithSpriteFrameName("GJ_trashBtn_001.png");
-        auto deleteBtn = CCMenuItemSpriteExtra::create(
-            deleteSpr, this, menu_selector(TrashcanPopup::onDelete)
-        );
-        deleteBtn->setLayoutOptions(AxisLayoutOptions::create()->setRelativeScale(.95f));
-        deleteBtn->setUserObject(gmd);
-        actionsMenu->addChild(deleteBtn);
-
-        auto infoSpr = CCSprite::createWithSpriteFrameName("GJ_infoIcon_001.png");
-        auto infoBtn = CCMenuItemSpriteExtra::create(
-            infoSpr, this, menu_selector(TrashcanPopup::onInfo)
-        );
-        infoBtn->setUserObject(gmd);
-        actionsMenu->addChild(infoBtn);
-
-        actionsMenu->setLayout(
-            RowLayout::create()
-                ->setAxisAlignment(AxisAlignment::End)
-                ->setAxisReverse(true)
-                ->setDefaultScaleLimits(.1f, .65f)
-                ->setGap(10)
-        );
-        actionsMenu->setAnchorPoint({ 1, .5f });
-        node->addChildAtPosition(actionsMenu, Anchor::Right, ccp(-10, 0));
-        
-        m_scrollingLayer->m_contentLayer->addChild(node);
+    for (auto const& item : Trashcan::get()->getItems()) {
+        m_scrollingLayer->m_contentLayer->addChild(TrashedItemNode::create(item));
     }
     m_scrollingLayer->m_contentLayer->updateLayout();
+    m_scrollingLayer->moveToTop();
 
     // This is because updating the LevelBrowserLayer underneath causes it to take touch priority
     handleTouchPriority(this);
 }
 
-void TrashcanPopup::onInfo(CCObject* sender) {
-    auto obj = static_cast<Trashed*>(static_cast<CCNode*>(sender)->getUserObject());
-    if (auto level = obj->asLevel()) {
-        FLAlertLayer::create(
-            "Level Info",
-            fmt::format(
-                "<cb>Objects</c>: {}\n"
-                "<co>Length</c>: {}\n"
-                "<cp>Time in Editor</c>: {}\n",
-                level->m_objectCount.value(),
-                level->lengthKeyToString(level->m_levelLength),
-                level->m_workingTime
-            ),
-            "OK"
-        )->show();
-    }
-    else if (auto list = obj->asList()) {
-        FLAlertLayer::create(
-            "List Info",
-            fmt::format("<cb>Levels</c>: {}\n", list->m_levels.size()),
-            "OK"
-        )->show();
-    }
-}
-void TrashcanPopup::onDelete(CCObject* sender) {
-    auto obj = static_cast<Trashed*>(static_cast<CCNode*>(sender)->getUserObject());
-    createQuickPopup(
-        "Permanently Delete",
-        fmt::format(
-            "Are you sure you want to <cr>permanently delete</c> <cy>{}</c>?\n"
-            "<cr>This can NOT be undone!</c>",
-            obj->getName()
-        ),
-        "Cancel", "Delete",
-        [obj = Ref(obj)](auto*, bool btn2) {
-            if (btn2) {
-                auto res = obj->KABOOM();
-                if (!res) {
-                    FLAlertLayer::create(
-                        "Failed to Delete",
-                        fmt::format("Failed to permanently delete <cy>{}</c>: {}", obj->getName(), res.unwrapErr()),
-                        "OK"
-                    )->show();
-                }
-            }
-        }
-    );
-}
-void TrashcanPopup::onRestore(CCObject* sender) {
-    auto obj = static_cast<Trashed*>(static_cast<CCNode*>(sender)->getUserObject());
-    auto res = obj->untrash();
-    if (!res) {
-        FLAlertLayer::create(
-            "Failed to Restore",
-            fmt::format("Failed to restore <cy>{}</c>: {}", obj->getName(), res.unwrapErr()),
-            "OK"
-        )->show();
-    }
-}
 void TrashcanPopup::onDeleteAll(CCObject*) {
     createQuickPopup(
         "Clear Trashcan",
-        "Are you sure you want to <co>clear the Trashcan</c>?\n"
-        "<cr>This will PERMANENTLY delete ALL levels in the trash!</c>",
+        fmt::format(
+            "Are you sure you want to <co>clear the Trashcan</c>?\n"
+            "<cr>This will PERMANENTLY delete ALL {} levels in the trash!</c>",
+            Trashcan::get()->getItems().size()
+        ),
         "Cancel", "Delete All",
-        [](auto*, bool btn2) {
+        [this](auto*, bool btn2) {
             if (btn2) {
-                std::error_code ec;
-                std::filesystem::remove_all(getTrashDir(), ec);
-                if (ec) {
-                    FLAlertLayer::create(
-                        "Failed to Clear",
-                        fmt::format("Failed to clear trash: {} (code {})", ec.message(), ec.value()),
-                        "OK"
-                    )->show();
+                auto res = Trashcan::get()->deleteAllPermanently();
+                if (!res) {
+                    FLAlertLayer::create("Failed to Clear", res.unwrapErr(), "OK")->show();
                 }
+                this->onClose(nullptr);
             }
         }
     );

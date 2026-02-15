@@ -9,7 +9,7 @@
 #include <Geode/modify/MenuLayer.hpp>
 #include <Geode/utils/cocos.hpp>
 #include <Geode/loader/Dirs.hpp>
-#include "Trashed.hpp"
+#include "Trash.hpp"
 #include "TrashcanPopup.hpp"
 
 using namespace geode::prelude;
@@ -18,7 +18,7 @@ struct $modify(GameLevelManager) {
 	$override
 	void deleteLevel(GJGameLevel* level) {
 		if (level->m_levelType == GJLevelType::Editor) {
-			auto res = Trashed::trash(level);
+			auto res = Trashcan::get()->trash(level);
 			if (!res) {
 				FLAlertLayer::create(
 					"Error Trashing Level",
@@ -33,7 +33,7 @@ struct $modify(GameLevelManager) {
 	$override
 	void deleteLevelList(GJLevelList* list) {
 		if (list->m_listType == GJLevelType::Editor) {
-			auto res = Trashed::trash(list);
+			auto res = Trashcan::get()->trash(list);
 			if (!res) {
 				FLAlertLayer::create(
 					"Error Trashing List",
@@ -67,8 +67,7 @@ class $modify(TrashBrowserLayer, LevelBrowserLayer) {
                 menu->updateLayout();
 
                 auto updateTrashSprite = [trashSpr] {
-                    std::error_code ec;
-                    auto finnsTrashed = !std::filesystem::is_empty(getTrashDir(), ec) && !ec;
+                    auto finnsTrashed = !Trashcan::get()->getItems().empty();
                     trashSpr->setOpacity(finnsTrashed ? 255 : 205);
                     trashSpr->setColor(finnsTrashed ? ccWHITE : ccc3(90, 90, 90));
                 };
@@ -76,7 +75,6 @@ class $modify(TrashBrowserLayer, LevelBrowserLayer) {
                     updateTrashSprite();
                     // Reload levels list
                     this->loadPage(m_searchObject);
-                    return ListenerResult::Propagate;
                 });
                 updateTrashSprite();
             }
@@ -84,8 +82,7 @@ class $modify(TrashBrowserLayer, LevelBrowserLayer) {
         return true;
     }
     void onTrashcan(CCObject*) {
-        std::error_code ec;
-        auto finnsTrashed = !std::filesystem::is_empty(getTrashDir(), ec) && !ec;
+        auto finnsTrashed = !Trashcan::get()->getItems().empty();
         if (finnsTrashed) {
             TrashcanPopup::create()->show();
         }
@@ -155,7 +152,7 @@ class $modify(MenuLayer) {
 		if (!MenuLayer::init())
 			return false;
 		
-		Trashed::recoverAll();
+		Trashcan::get()->load();
 
 		return true;
 	}

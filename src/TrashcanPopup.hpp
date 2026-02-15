@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Trashed.hpp"
+#include "Trash.hpp"
 #include <Geode/ui/Popup.hpp>
 #include <Geode/ui/ScrollLayer.hpp>
 
@@ -13,10 +13,6 @@ protected:
 
     bool init();
     void updateList();
-
-    void onInfo(CCObject* sender);
-    void onDelete(CCObject* sender);
-    void onRestore(CCObject* sender);
     void onDeleteAll(CCObject* sender);
 
 public:
