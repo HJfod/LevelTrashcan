@@ -143,6 +143,8 @@ Result<std::shared_ptr<TrashedItem>> Trashcan::loadItem(
     return Ok(item);
 }
 void Trashcan::load() {
+    m_loaded = true;
+
     std::unordered_set<std::string> succesfullyLoadedWithMetadata;
 
     log::info("Recovering old trashcan mod files...");
@@ -209,6 +211,9 @@ void Trashcan::saveMetadata() {
     (void)file::writeString(this->getTrashDir() / "metadata.json", matjson::makeObject({
         { "trash-times", trashTimes },
     }).dump());
+}
+bool Trashcan::isLoaded() const {
+    return m_loaded;
 }
 
 std::filesystem::path Trashcan::getTrashDir() const {

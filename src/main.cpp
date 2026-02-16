@@ -6,7 +6,6 @@
 #include <Geode/modify/GameLevelManager.hpp>
 #include <Geode/modify/LevelBrowserLayer.hpp>
 #include <Geode/modify/EditLevelLayer.hpp>
-#include <Geode/modify/MenuLayer.hpp>
 #include <Geode/utils/cocos.hpp>
 #include <Geode/loader/Dirs.hpp>
 #include "Trash.hpp"
@@ -67,7 +66,7 @@ class $modify(TrashBrowserLayer, LevelBrowserLayer) {
                 menu->updateLayout();
 
                 auto updateTrashSprite = [trashSpr] {
-                    auto finnsTrashed = !Trashcan::get()->getItems().empty();
+                    auto finnsTrashed = !Trashcan::get()->isLoaded() || !Trashcan::get()->getItems().empty();
                     trashSpr->setOpacity(finnsTrashed ? 255 : 205);
                     trashSpr->setColor(finnsTrashed ? ccWHITE : ccc3(90, 90, 90));
                 };
@@ -82,6 +81,19 @@ class $modify(TrashBrowserLayer, LevelBrowserLayer) {
         return true;
     }
     void onTrashcan(CCObject*) {
+		if (!Trashcan::get()->isLoaded()) {
+			auto loadingAlert = CCLabelBMFont::create(
+				"Loading trashcan, this may take a while...",
+				"bigFont.fnt"
+			);
+			CCScene::get()->addChildAtPosition(loadingAlert, Anchor::Center, ccp(0, 0), false);
+			Loader::get()->queueInMainThread([this, loadingAlert] {
+				Trashcan::get()->load();
+				loadingAlert->removeFromParent();
+				this->onTrashcan(nullptr);
+			});
+			return;
+		}
         auto finnsTrashed = !Trashcan::get()->getItems().empty();
         if (finnsTrashed) {
             TrashcanPopup::create()->show();
@@ -146,14 +158,4 @@ class $modify(LevelBrowserLayer) {
 			return LevelBrowserLayer::onDeleteSelected(sender);
 		}
     }
-};
-class $modify(MenuLayer) {
-	bool init() {
-		if (!MenuLayer::init())
-			return false;
-		
-		Trashcan::get()->load();
-
-		return true;
-	}
 };

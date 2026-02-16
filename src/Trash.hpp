@@ -32,6 +32,7 @@ public:
 class Trashcan final {
 protected:
     std::vector<std::shared_ptr<TrashedItem>> m_items;
+    bool m_loaded = false;
 
     void saveMetadata();
     Result<std::shared_ptr<TrashedItem>> loadItem(
@@ -43,6 +44,7 @@ public:
     static Trashcan* get();
 
     void load();
+    bool isLoaded() const;
 
     std::filesystem::path getTrashDir() const;
     std::string getFreeID(ZStringView name, ZStringView ext);

@@ -1,5 +1,5 @@
 {
-	"geode": "5.0.0-beta.1",
+	"geode": "5.0.0-beta.2",
 	"gd": {
 		"win": "2.2081",
 		"android": "2.2081",
@@ -8,7 +8,7 @@
 	},
 	"id": "hjfod.trashcan",
 	"name": "Trashcan",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"developer": "HJfod",
 	"description": "Deleting levels puts them in a trashcan",
 	"dependencies": {
